@@ -1,6 +1,4 @@
 #include <iostream>
-#include <fstream>
-#include <Eigen/Dense>
 #include <vector>
 #include <string>
 #include <memory>
@@ -29,7 +27,7 @@ int main()
 		exit(0);
 	}
 
-	//set up DNN structure
+	//set up MLP structure
 	std::vector<int> layers = {INPUT_SIZE, 10, NB_CLASSES};
 	
 	//dnnJG NN(layers, train_data, train_labels, test_data, test_labels, 100, -1, -1, 0.05, 0.01, 1);

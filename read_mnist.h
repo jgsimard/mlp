@@ -19,13 +19,11 @@ static int reverse_int(int& i)
 	ch4 = (i >> 24) & 255;
 	return((int)ch1 << 24) + ((int)ch2 << 16) + ((int)ch3 << 8) + ch4;
 }
-auto read_data_MNIST(const int& size_data,std::string folder, bool trainData)
+auto read_data_MNIST(const int& size_data, std::string folder, bool train_data)
 {
-	auto data = std::make_shared<Eigen::MatrixXd>(size_data, INPUT_SIZE);
-	std::string file_name = folder + (trainData ? "train-images.idx3-ubyte" : "t10k-images.idx3-ubyte");
+	std::string file_name = folder + (train_data ? "train-images.idx3-ubyte" : "t10k-images.idx3-ubyte");
 	std::ifstream file = std::ifstream(file_name, std::ios::binary);
-	if (file.is_open())
-	{
+	if (file.is_open()){
 		//numbers in header
 		int magic_number = 0, number_of_images = 0, n_rows = 0, n_cols = 0;
 
@@ -43,9 +41,11 @@ auto read_data_MNIST(const int& size_data,std::string folder, bool trainData)
 			n_cols = reverse_int(n_cols);
 		};
 
-		//read data
 		std::cout << file_name << std::endl;
 		printf("magic_number: %d, number_of_images : %d, n_rows: %d, n_cols : %d \n\n", magic_number, number_of_images, n_rows, n_cols);
+		
+		//read data
+		auto data = std::make_shared<Eigen::MatrixXd>(size_data, INPUT_SIZE);
 		for (int i = 0; i < size_data; i++) {
 			for (int r = 0; r < n_rows; r++) {
 				for (int c = 0; c < n_cols; c++) {
@@ -61,11 +61,9 @@ auto read_data_MNIST(const int& size_data,std::string folder, bool trainData)
 }
 auto read_labels_MNIST(const int& size_data, std::string folder, bool train_labels)
 {
-	auto labels = std::make_shared<Eigen::MatrixXd>(size_data, NB_CLASSES);
 	std::string file_name = folder + (train_labels ? "train-labels.idx1-ubyte" : "t10k-labels.idx1-ubyte");
 	std::ifstream file = std::ifstream(file_name, std::ios::binary);
-	if (file.is_open())
-	{
+	if (file.is_open()){
 		//numbers in header
 		int magic_number = 0, number_of_items = 0;
 
@@ -81,6 +79,9 @@ auto read_labels_MNIST(const int& size_data, std::string folder, bool train_labe
 
 		std::cout << file_name << std::endl;
 		printf("magic_number: %d, number_of_items : %d \n\n", magic_number, number_of_items);
+
+		//read labels
+		auto labels = std::make_shared<Eigen::MatrixXd>(size_data, NB_CLASSES);
 		for (int i = 0; i < size_data; i++) {
 			unsigned char temp = 0;
 			file.read((char*)&temp, sizeof(temp));

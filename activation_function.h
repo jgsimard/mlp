@@ -15,5 +15,7 @@ static double binaryD(const double& x) { return 0; };
 static double reluD(const double& x) { return x < 0 ? 0 : 1; };
 
 // set of cost function
+/*
 void euclidian(double *cost, Eigen::MatrixXd *labels, Eigen::MatrixXd *predictions) { *cost = (*labels - *predictions).squaredNorm(); };
 void crossEntropy(double *cost, Eigen::MatrixXd *labels, Eigen::MatrixXd *predictions) { *cost = 1; }; // TODO
+*/
