@@ -51,7 +51,7 @@ auto read_data_MNIST(const int& size_data, std::string folder, bool train_data)
 				for (int c = 0; c < n_cols; c++) {
 					unsigned char temp = 0;
 					file.read((char*)&temp, sizeof(temp));
-					(*data)(i, (n_rows*r) + c) = (double)temp;
+					(*data)(i, (n_rows * r) + c) = (double)temp;
 				}
 			}
 		}
@@ -81,7 +81,7 @@ auto read_labels_MNIST(const int& size_data, std::string folder, bool train_labe
 		printf("magic_number: %d, number_of_items : %d \n\n", magic_number, number_of_items);
 
 		//read labels
-		auto labels = std::make_shared<Eigen::MatrixXd>(size_data, NB_CLASSES);
+		auto labels = std::shared_ptr<Eigen::MatrixXd>(new Eigen::MatrixXd(Eigen::MatrixXd::Zero(size_data, NB_CLASSES)));
 		for (int i = 0; i < size_data; i++) {
 			unsigned char temp = 0;
 			file.read((char*)&temp, sizeof(temp));

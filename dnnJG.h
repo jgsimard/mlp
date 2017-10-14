@@ -4,6 +4,7 @@
 #include <Eigen/Dense>	//matrix library
 #include <ctime>		//calculate time of epoch
 #include <omp.h>		//multithreading
+#include <memory>
 
 #include "activation_function.h"
 
@@ -12,10 +13,10 @@ class dnnJG
 public:
 	//consructor
 	dnnJG(std::vector<int> layers, 
-			Eigen::MatrixXd *train_data,
-			Eigen::MatrixXd *train_labels, 
-			Eigen::MatrixXd *test_data, 
-			Eigen::MatrixXd *test_labels,
+			std::shared_ptr<Eigen::MatrixXd> train_data,
+			std::shared_ptr<Eigen::MatrixXd> train_labels, 
+			std::shared_ptr<Eigen::MatrixXd> test_data, 
+			std::shared_ptr<Eigen::MatrixXd> test_labels,
 			unsigned batchSize = 100, 
 			int activation_function = -1, 
 			int cost_function = -1, 
@@ -61,17 +62,17 @@ protected:
 	std::vector <Eigen::MatrixXd*> weights_, bias_;
 
 	std::vector <Eigen::MatrixXd*> weights_past_update_, bias_past_update_;	//for SGD
-	std::vector <Eigen::MatrixXd*> v_, y_;								//batch predictions
+	std::vector <Eigen::MatrixXd*> v_, y_;								    //batch predictions
 	std::vector <Eigen::MatrixXd*> y_d_, local_gradients_;					//for backpropagation
 	std::vector <Eigen::MatrixXd*> v_I, y_I;								//inference predictions
 
-																			//data
-	Eigen::MatrixXd *train_data_, *train_labels_;		//train data
-	Eigen::MatrixXd *test_data_, *test_labels_;		//test data	
-	Eigen::MatrixXd *batch_input_, *batch_labels_;		//batch data
+	//data
+	std::shared_ptr<Eigen::MatrixXd> train_data_,  train_labels_;		//train data
+	std::shared_ptr<Eigen::MatrixXd> test_data_,   test_labels_;		//test data	
+	std::shared_ptr<Eigen::MatrixXd> batch_input_, batch_labels_;		//batch data
 
-														// pointers to the functions used in backpropagation
-	double(*m_activation_function) (const double&);
-	double(*m_activation_functionDerivative) (const double&);
-	void(*cost__function) (double*, Eigen::MatrixXd*, Eigen::MatrixXd*);
+	// pointers to the functions used in backpropagation
+	double(*activation_function_) (const double&);
+	double(*activation_function_derivative_) (const double&);
+	void(*cost_function_) (double*, Eigen::MatrixXd*, Eigen::MatrixXd*);
 };

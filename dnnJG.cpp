@@ -6,15 +6,31 @@ using namespace Eigen;
 void euclidian(double *cost, MatrixXd *labels, MatrixXd *predictions) { *cost = (*labels - *predictions).squaredNorm(); };
 void crossEntropy(double *cost, MatrixXd *labels, MatrixXd *predictions) { *cost = 1; }; // TODO
 
-dnnJG::dnnJG(std::vector<int> layers, MatrixXd *train_data, MatrixXd *train_labels, MatrixXd *test_data, MatrixXd *test_labels,
-	unsigned batchSize, int activation_function, int cost_function, double learning_rate, double momentum, int updateWeightFunction) :
-	batch_size_(batchSize), train_data_(train_data), train_labels_(train_labels), nb_layers_(unsigned(layers.size())),
-	learning_rate_(learning_rate), momentum_(momentum), input_size_(unsigned(train_data->rows())), weight_update_function_(updateWeightFunction),
-	test_data_(test_data), test_labels_(test_labels),
+dnnJG::dnnJG(std::vector<int> layers,
+	std::shared_ptr<Eigen::MatrixXd> train_data,
+	std::shared_ptr<Eigen::MatrixXd> train_labels,
+	std::shared_ptr<Eigen::MatrixXd> test_data,
+	std::shared_ptr<Eigen::MatrixXd> test_labels,
+	unsigned batchSize,
+	int activation_function, 
+	int cost_function, 
+	double learning_rate, 
+	double momentum, 
+	int updateWeightFunction) : 
+	batch_size_(batchSize),
+	train_data_(train_data), 
+	train_labels_(train_labels), 
+	nb_layers_(unsigned(layers.size())),
+	learning_rate_(learning_rate), 
+	momentum_(momentum), 
+	input_size_(unsigned(train_data->rows())), 
+	weight_update_function_(updateWeightFunction),
+	test_data_(test_data), 
+	test_labels_(test_labels),
 	test_size_(unsigned(test_data->rows()))
 {
-	batch_input_ = new MatrixXd(MatrixXd::Zero(batch_size_, layers.front()));
-	batch_labels_ = new MatrixXd(MatrixXd::Zero(batch_size_, layers.back()));
+	batch_input_ = std::shared_ptr<Eigen::MatrixXd>(new MatrixXd(MatrixXd::Zero(batch_size_, layers.front())));
+	batch_labels_ = std::shared_ptr<Eigen::MatrixXd>(new MatrixXd(MatrixXd::Zero(batch_size_, layers.back())));
 
 	for (unsigned i = 0; i < nb_layers_ - 1; i++) {
 		v_.push_back(new MatrixXd(MatrixXd::Zero(batch_size_, layers[i + 1])));
@@ -33,22 +49,23 @@ dnnJG::dnnJG(std::vector<int> layers, MatrixXd *train_data, MatrixXd *train_labe
 		bias_past_update_.push_back(new MatrixXd(MatrixXd::Random(1, layers[i + 1])));
 	}
 	switch (activation_function) {
-	case 1:  m_activation_function = &identity;	m_activation_functionDerivative = &identityD; break;
-	case 2:  m_activation_function = &logistic;	m_activation_functionDerivative = &logisticD; break;
-	case 3:  m_activation_function = &binary;	m_activation_functionDerivative = &binaryD;	 break;
-	case 4:  m_activation_function = &relu;		m_activation_functionDerivative = &reluD;	 break;
-	default: m_activation_function = &logistic;	m_activation_functionDerivative = &logisticD; break;
+	case 1:  activation_function_ = &identity;	activation_function_derivative_ = &identityD; break;
+	case 2:  activation_function_ = &logistic;	activation_function_derivative_ = &logisticD; break;
+	case 3:  activation_function_ = &binary;	activation_function_derivative_ = &binaryD;	 break;
+	case 4:  activation_function_ = &relu;		activation_function_derivative_ = &reluD;	 break;
+	default: activation_function_ = &logistic;	activation_function_derivative_ = &logisticD; break;
 	}
 
 	switch (cost_function) {
-	case 1:  cost__function = &crossEntropy;	break;
-	default: cost__function = &euclidian;		break;
+	case 1:  cost_function_ = &crossEntropy;	break;
+	default: cost_function_ = &euclidian;		break;
 	}
 
 	printf("Initialization complete \n");
 }
 dnnJG::~dnnJG()
 {
+	/*
 	delete batch_labels_;
 	delete batch_input_;
 
@@ -65,6 +82,7 @@ dnnJG::~dnnJG()
 		weights_.pop_back();
 		bias_.pop_back();
 	}
+	*/
 }
 
 void dnnJG::printStateE(unsigned currentEpoch, double accuracy, double temps)
@@ -84,8 +102,8 @@ void dnnJG::printStateEBCostOnly(unsigned currentEpoch, unsigned currentBatch, d
 }
 
 int dnnJG::train(unsigned nbEpochs) {
-	omp_set_num_threads(2);
-	setNbThreads(2);
+	//omp_set_num_threads(2);
+	//setNbThreads(2);
 	input_size_ = unsigned(train_data_->rows());
 	for (unsigned i = 0; i < nbEpochs; i++) {
 		//set up permatation matrix
@@ -98,19 +116,19 @@ int dnnJG::train(unsigned nbEpochs) {
 		clock_t start = clock();
 		for (unsigned j = 0; j < input_size_ / batch_size_; j++) {
 			cost_ = 0;
-			forward(train_data_, batch_input_, batch_size_, j * batch_size_);
+			forward(train_data_.get(), batch_input_.get(), batch_size_, j * batch_size_);
 			*batch_labels_ = train_labels_->block(j*batch_size_, 0, batch_size_, train_labels_->cols());
-			backward(batch_labels_);
-			cost__function(&cost_, batch_labels_, y_.back());
+			backward(batch_labels_.get());
+			cost_function_(&cost_, batch_labels_.get(), y_.back());
 			updateWeight();
-			/*accuracy_ = checkAccuracy(y_.back(), batch_labels_);
+			/*accuracy_ = checkAccuracy(y_.back(), m_batchLabels);
 			printStateEB(i, j, accuracy_, clock() - start);
 			printStateEBCostOnly(i, j, clock() - start);
 			start = clock();
 			printStateE(i * input_size_/batch_size_ + j, accuracy_);*/
 		}
 		inference();
-		accuracy_ = checkAccuracy(y_I.back(), test_labels_);
+		accuracy_ = checkAccuracy(y_I.back(), test_labels_.get());
 		printStateE(i, accuracy_, clock() - start);
 		start = clock();
 	}
@@ -124,16 +142,17 @@ void dnnJG::addBias(Eigen::MatrixXd *bias, Eigen::MatrixXd *output, unsigned inp
 }
 
 void dnnJG::forward(Eigen::MatrixXd *data, Eigen::MatrixXd *input, unsigned inputSize, int position) {
-	*input = data->block(position, 0, inputSize, data->cols()); //must use temp because eigen do not support matrix multiplication of block
+	//must use temp because eigen do not support matrix multiplication of block
+	*input = data->block(position, 0, inputSize, data->cols()); 
 	for (unsigned k = 0; k < weights_.size(); k++) {
 		*v_[k] = (k == 0 ? (*input) * (*weights_[k]) : (*y_[k - 1]) * (*weights_[k]));
 		addBias(bias_[k], v_[k], batch_size_);
-		*y_[k] = v_[k]->unaryExpr(m_activation_function);
-		*y_d_[k] = (v_[k]->unaryExpr(m_activation_functionDerivative)).transpose();
+		*y_[k] = v_[k]->unaryExpr(activation_function_);
+		*y_d_[k] = (v_[k]->unaryExpr(activation_function_derivative_)).transpose();
+
 	}
 }
 void dnnJG::backward(Eigen::MatrixXd *labels) {
-
 	*local_gradients_.back() = (*y_.back() - *labels).transpose();
 	for (size_t k = local_gradients_.size() - 1; k > 0; k--)
 		*local_gradients_[k - 1] = ((*y_d_[k - 1]).array() * (*weights_[k] * (*local_gradients_[k])).array()).matrix();
@@ -142,7 +161,7 @@ void dnnJG::inference() {
 	for (unsigned k = 0; k < weights_.size(); k++) {
 		*v_I[k] = k == 0 ? (*test_data_) * (*weights_[k]) : (*y_I[k - 1]) * (*weights_[k]);
 		addBias(bias_[k], v_I[k], test_size_);
-		*y_I[k] = v_I[k]->unaryExpr(m_activation_function);
+		*y_I[k] = v_I[k]->unaryExpr(activation_function_);
 	}
 }
 double dnnJG::checkAccuracy(Eigen::MatrixXd *predic, Eigen::MatrixXd *labels) {
