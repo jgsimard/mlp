@@ -1,4 +1,5 @@
 #pragma once
+
 #include <vector>
 #include <iostream>
 #include <Eigen/Dense>	//matrix library
@@ -22,9 +23,12 @@ public:
 			int cost_function = -1, 
 			double learning_rate = 1.0, 
 			double momentum = 0.3, 
-			int updateWeightFunction = -1);
+			int weight_update_function = -1);
 
 	virtual ~dnnJG();
+
+	//
+	void print_state();
 
 	// wraps all stage of learning
 	int train(unsigned nbEpochs);
@@ -34,7 +38,7 @@ public:
 
 	//different stage of learning
 	void forward(Eigen::MatrixXd *data, Eigen::MatrixXd *input, unsigned inputSize, int position);
-	void addBias(Eigen::MatrixXd *bias, Eigen::MatrixXd *output, unsigned inputSize);
+	void add_bias(Eigen::MatrixXd *bias, Eigen::MatrixXd *output, unsigned inputSize);
 	void backward(Eigen::MatrixXd *input);
 	void updateWeight();
 
@@ -43,7 +47,7 @@ public:
 	void momentumSGD();
 
 	// show state of network
-	double checkAccuracy(Eigen::MatrixXd *pred, Eigen::MatrixXd *labels);
+	double check_accuracy(Eigen::MatrixXd *pred, Eigen::MatrixXd *labels);
 	void printStateE(unsigned currentEpoch, double accuracy, double temps);
 	void printStateEB(unsigned currentEpoch, unsigned currentBatch, double accuracy, double temps);
 	void printStateEBCostOnly(unsigned currentEpoch, unsigned currentBatch, double temps);
@@ -72,6 +76,8 @@ protected:
 	std::shared_ptr<Eigen::MatrixXd> batch_input_, batch_labels_;		//batch data
 
 	// pointers to the functions used in backpropagation
+	std::string activation_function_name_;
+	std::string cost_function_name_;
 	double(*activation_function_) (const double&);
 	double(*activation_function_derivative_) (const double&);
 	void(*cost_function_) (double*, Eigen::MatrixXd*, Eigen::MatrixXd*);

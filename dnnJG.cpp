@@ -2,10 +2,6 @@
 
 using namespace Eigen;
 
-// set of cost function
-void euclidian(double *cost, MatrixXd *labels, MatrixXd *predictions) { *cost = (*labels - *predictions).squaredNorm(); };
-void crossEntropy(double *cost, MatrixXd *labels, MatrixXd *predictions) { *cost = 1; }; // TODO
-
 dnnJG::dnnJG(std::vector<int> layers,
 	std::shared_ptr<Eigen::MatrixXd> train_data,
 	std::shared_ptr<Eigen::MatrixXd> train_labels,
@@ -16,7 +12,7 @@ dnnJG::dnnJG(std::vector<int> layers,
 	int cost_function, 
 	double learning_rate, 
 	double momentum, 
-	int updateWeightFunction) : 
+	int weight_update_function) : 
 	batch_size_(batchSize),
 	train_data_(train_data), 
 	train_labels_(train_labels), 
@@ -24,7 +20,7 @@ dnnJG::dnnJG(std::vector<int> layers,
 	learning_rate_(learning_rate), 
 	momentum_(momentum), 
 	input_size_(unsigned(train_data->rows())), 
-	weight_update_function_(updateWeightFunction),
+	weight_update_function_(weight_update_function),
 	test_data_(test_data), 
 	test_labels_(test_labels),
 	test_size_(unsigned(test_data->rows()))
@@ -49,26 +45,22 @@ dnnJG::dnnJG(std::vector<int> layers,
 		bias_past_update_.push_back(new MatrixXd(MatrixXd::Random(1, layers[i + 1])));
 	}
 	switch (activation_function) {
-	case 1:  activation_function_ = &identity;	activation_function_derivative_ = &identityD; break;
-	case 2:  activation_function_ = &logistic;	activation_function_derivative_ = &logisticD; break;
-	case 3:  activation_function_ = &binary;	activation_function_derivative_ = &binaryD;	 break;
-	case 4:  activation_function_ = &relu;		activation_function_derivative_ = &reluD;	 break;
-	default: activation_function_ = &logistic;	activation_function_derivative_ = &logisticD; break;
+	case 1:  activation_function_ = &identity;	activation_function_derivative_ = &identityD; activation_function_name_ = "identity"; break;
+	case 2:  activation_function_ = &logistic;	activation_function_derivative_ = &logisticD; activation_function_name_ = "logistic"; break;
+	case 3:  activation_function_ = &binary;	activation_function_derivative_ = &binaryD;	  activation_function_name_ = "binary";   break;
+	case 4:  activation_function_ = &relu;		activation_function_derivative_ = &reluD;	  activation_function_name_ = "relu"; break;
+	default: activation_function_ = &logistic;	activation_function_derivative_ = &logisticD; activation_function_name_ = "logistic"; break;
 	}
 
 	switch (cost_function) {
-	case 1:  cost_function_ = &crossEntropy;	break;
-	default: cost_function_ = &euclidian;		break;
+	case 1:  cost_function_ = &crossEntropy; cost_function_name_ = "crossEntropy";	break;
+	default: cost_function_ = &euclidian;	 cost_function_name_ = "euclidian";		break;
 	}
 
-	printf("Initialization complete \n");
+	printf("Neural network initialization complete \n");
 }
 dnnJG::~dnnJG()
 {
-	/*
-	delete batch_labels_;
-	delete batch_input_;
-
 	for (unsigned i = 0; i < nb_layers_ - 1; i++) {
 		delete v_.back();
 		delete y_.back();
@@ -82,7 +74,22 @@ dnnJG::~dnnJG()
 		weights_.pop_back();
 		bias_.pop_back();
 	}
-	*/
+}
+
+
+void dnnJG::print_state()
+{
+	std::cout << "\nNeural network parameters :\n" <<
+		"Number of layers : " << nb_layers_ <<"\n" <<
+		"Network structure : " << weights_.front()->rows() << ' ';
+	for (auto const &i : weights_)
+		std::cout << i->cols() << ' ';
+	std::cout << "\nTraining set size : " << input_size_ << "\n"<<
+		"Testing set size : " << test_size_ << "\n"
+		"Activation function : " << activation_function_name_ << "\n"
+		"Cost function : " << cost_function_name_ << "\n";
+
+	std::cout << std::endl;
 }
 
 void dnnJG::printStateE(unsigned currentEpoch, double accuracy, double temps)
@@ -102,6 +109,7 @@ void dnnJG::printStateEBCostOnly(unsigned currentEpoch, unsigned currentBatch, d
 }
 
 int dnnJG::train(unsigned nbEpochs) {
+	std::cout << "Training ... \n";
 	//omp_set_num_threads(2);
 	//setNbThreads(2);
 	input_size_ = unsigned(train_data_->rows());
@@ -121,14 +129,9 @@ int dnnJG::train(unsigned nbEpochs) {
 			backward(batch_labels_.get());
 			cost_function_(&cost_, batch_labels_.get(), y_.back());
 			updateWeight();
-			/*accuracy_ = checkAccuracy(y_.back(), m_batchLabels);
-			printStateEB(i, j, accuracy_, clock() - start);
-			printStateEBCostOnly(i, j, clock() - start);
-			start = clock();
-			printStateE(i * input_size_/batch_size_ + j, accuracy_);*/
 		}
 		inference();
-		accuracy_ = checkAccuracy(y_I.back(), test_labels_.get());
+		accuracy_ = check_accuracy(y_I.back(), test_labels_.get());
 		printStateE(i, accuracy_, clock() - start);
 		start = clock();
 	}
@@ -136,7 +139,7 @@ int dnnJG::train(unsigned nbEpochs) {
 }
 
 
-void dnnJG::addBias(Eigen::MatrixXd *bias, Eigen::MatrixXd *output, unsigned inputSize) {
+void dnnJG::add_bias(Eigen::MatrixXd *bias, Eigen::MatrixXd *output, unsigned inputSize) {
 	for (unsigned k = 0; k < inputSize; k++)
 		output->block(k, 0, 1, output->cols()) += *bias;
 }
@@ -146,7 +149,7 @@ void dnnJG::forward(Eigen::MatrixXd *data, Eigen::MatrixXd *input, unsigned inpu
 	*input = data->block(position, 0, inputSize, data->cols()); 
 	for (unsigned k = 0; k < weights_.size(); k++) {
 		*v_[k] = (k == 0 ? (*input) * (*weights_[k]) : (*y_[k - 1]) * (*weights_[k]));
-		addBias(bias_[k], v_[k], batch_size_);
+		add_bias(bias_[k], v_[k], batch_size_);
 		*y_[k] = v_[k]->unaryExpr(activation_function_);
 		*y_d_[k] = (v_[k]->unaryExpr(activation_function_derivative_)).transpose();
 
@@ -160,11 +163,11 @@ void dnnJG::backward(Eigen::MatrixXd *labels) {
 void dnnJG::inference() {
 	for (unsigned k = 0; k < weights_.size(); k++) {
 		*v_I[k] = k == 0 ? (*test_data_) * (*weights_[k]) : (*y_I[k - 1]) * (*weights_[k]);
-		addBias(bias_[k], v_I[k], test_size_);
+		add_bias(bias_[k], v_I[k], test_size_);
 		*y_I[k] = v_I[k]->unaryExpr(activation_function_);
 	}
 }
-double dnnJG::checkAccuracy(Eigen::MatrixXd *predic, Eigen::MatrixXd *labels) {
+double dnnJG::check_accuracy(Eigen::MatrixXd *predic, Eigen::MatrixXd *labels) {
 	int count = 0;
 	MatrixXd::Index dummy, maxLabelsCol, maxPredicCol;
 	for (int i = 0; i < labels->rows(); i++) {

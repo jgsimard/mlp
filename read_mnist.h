@@ -42,7 +42,7 @@ namespace jg_mnist {
 				n_cols = reverse_int(n_cols);
 			};
 
-			std::cout << file_name << std::endl;
+			std::cout << "Loading file : " << file_name << std::endl;
 			printf("magic_number: %d, number_of_images : %d, n_rows: %d, n_cols : %d \n\n", magic_number, number_of_images, n_rows, n_cols);
 
 			//read data
@@ -78,7 +78,7 @@ namespace jg_mnist {
 				number_of_items = reverse_int(number_of_items);
 			}
 
-			std::cout << file_name << std::endl;
+			std::cout << "Loading file : " << file_name << std::endl;
 			printf("magic_number: %d, number_of_items : %d \n\n", magic_number, number_of_items);
 
 			//read labels
