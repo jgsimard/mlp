@@ -14,21 +14,20 @@ class dnnJG
 public:
 	//consructor
 	dnnJG(std::vector<int> layers, 
-			std::shared_ptr<Eigen::MatrixXd> train_data,
-			std::shared_ptr<Eigen::MatrixXd> train_labels, 
-			std::shared_ptr<Eigen::MatrixXd> test_data, 
-			std::shared_ptr<Eigen::MatrixXd> test_labels,
-			unsigned batchSize = 100, 
+			p_matrix train_data,
+			p_matrix train_labels, 
+			p_matrix test_data, 
+			p_matrix test_labels,
+			unsigned batchSize = 50, 
 			int activation_function = -1, 
 			int cost_function = -1, 
-			double learning_rate = 1.0, 
-			double momentum = 0.3, 
+			double learning_rate = 0.05, 
+			double momentum = 0.01, 
 			int weight_update_function = -1);
 
 	virtual ~dnnJG();
 
-	//
-	void print_state();
+	void print_structure();
 
 	// wraps all stage of learning
 	int train(unsigned nbEpochs);
@@ -48,9 +47,6 @@ public:
 
 	// show state of network
 	double check_accuracy(Eigen::MatrixXd *pred, Eigen::MatrixXd *labels);
-	void printStateE(unsigned currentEpoch, double accuracy, double temps);
-	void printStateEB(unsigned currentEpoch, unsigned currentBatch, double accuracy, double temps);
-	void printStateEBCostOnly(unsigned currentEpoch, unsigned currentBatch, double temps);
 
 protected:
 	//hyper-parameters
@@ -63,17 +59,17 @@ protected:
 	int weight_update_function_;
 
 	//parameters to be tuned
-	std::vector <Eigen::MatrixXd*> weights_, bias_;
+	vec_matrix weights_, bias_;
 
-	std::vector <Eigen::MatrixXd*> weights_past_update_, bias_past_update_;	//for SGD
-	std::vector <Eigen::MatrixXd*> v_, y_;								    //batch predictions
-	std::vector <Eigen::MatrixXd*> y_d_, local_gradients_;					//for backpropagation
-	std::vector <Eigen::MatrixXd*> v_I, y_I;								//inference predictions
+	vec_matrix weights_past_update_, bias_past_update_;	//for SGD
+	vec_matrix v_, y_;								    //batch predictions
+	vec_matrix y_d_, local_gradients_;					//for backpropagation
+	vec_matrix v_I, y_I;								//inference predictions
 
 	//data
-	std::shared_ptr<Eigen::MatrixXd> train_data_,  train_labels_;		//train data
-	std::shared_ptr<Eigen::MatrixXd> test_data_,   test_labels_;		//test data	
-	std::shared_ptr<Eigen::MatrixXd> batch_input_, batch_labels_;		//batch data
+	p_matrix train_data_,  train_labels_;		//train data
+	p_matrix test_data_,   test_labels_;		//test data	
+	p_matrix batch_input_, batch_labels_;		//batch data
 
 	// pointers to the functions used in backpropagation
 	std::string activation_function_name_;

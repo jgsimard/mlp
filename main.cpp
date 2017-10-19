@@ -7,13 +7,10 @@
 #include "dnnJG.h"
 #include "read_mnist.h"
 
-using namespace std;
-using namespace Eigen;
-
 int main()
 {
 	//datasets
-	int size_train_data = 5000,  size_test_data = 1000;
+	int size_train_data = 500,  size_test_data = 100;
 	std::string folder = "C:\\Users\\Jean-Gabriel Simard\\source\\repos\\mlp\\data\\";
 
 	auto train_data   = jg_mnist::read_data(size_train_data, folder, true);
@@ -24,9 +21,9 @@ int main()
 	//set up MLP structure
 	std::vector<int> layers = {jg_mnist::INPUT_SIZE, 100, jg_mnist::NB_CLASSES};
 	
-	dnnJG NN(layers, train_data, train_labels, test_data, test_labels, 50, -1, -1, 0.05, 0.01, 0);	
-	NN.print_state();
-	NN.train(100);
+	dnnJG mlp(layers, train_data, train_labels, test_data, test_labels);
+	mlp.print_structure();
+	mlp.train(2);
 
 	system("pause");
 }
