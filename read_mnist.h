@@ -11,7 +11,7 @@ namespace jg_mnist {
 	const int INPUT_SIZE = IMAGE_SIZE * IMAGE_SIZE;
 	const int NB_CLASSES = 10;
 
-	static int reverse_int(int& i)
+	inline int reverse_int(int& i)
 	{
 		unsigned char ch1, ch2, ch3, ch4;
 		ch1 = i & 255;
@@ -20,7 +20,7 @@ namespace jg_mnist {
 		ch4 = (i >> 24) & 255;
 		return((int)ch1 << 24) + ((int)ch2 << 16) + ((int)ch3 << 8) + ch4;
 	}
-	auto read_data(const int& size_data, std::string folder, bool train_data)
+	inline auto read_data(const int& size_data, std::string folder, bool train_data)
 	{
 		std::string file_name = folder + (train_data ? "train-images.idx3-ubyte" : "t10k-images.idx3-ubyte");
 		std::ifstream file = std::ifstream(file_name, std::ios::binary);
@@ -60,7 +60,7 @@ namespace jg_mnist {
 		}
 		else { throw file_name; }
 	}
-	auto read_labels(const int& size_data, std::string folder, bool train_labels)
+	inline auto read_labels(const int& size_data, std::string folder, bool train_labels)
 	{
 		std::string file_name = folder + (train_labels ? "train-labels.idx1-ubyte" : "t10k-labels.idx1-ubyte");
 		std::ifstream file = std::ifstream(file_name, std::ios::binary);
