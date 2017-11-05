@@ -1,34 +1,34 @@
 #pragma once
 
-#pragma once
-
 #include <Eigen/Dense>
 #include <algorithm>
 #include <memory>
+#include <cmath>
 
-typedef std::shared_ptr<Eigen::MatrixXd> p_matrix;
-typedef std::vector <p_matrix> vec_matrix;
+using p_matrix  = std::shared_ptr<Eigen::MatrixXd>;
+using vec_matrix = std::vector <p_matrix>;
 
 inline auto make_random(const int& rows, const int& cols) { return p_matrix(new Eigen::MatrixXd(Eigen::MatrixXd::Random(rows, cols))); }
 inline auto make_zero(const int& rows, const int& cols) { return p_matrix(new Eigen::MatrixXd(Eigen::MatrixXd::Zero(rows, cols))); }
 
-
 // set of activation function
-inline double identity(const double& x) { return x; };
-inline double logistic(const double& x) { return 1 / (1 + std::exp(-x)); };
-inline double binary(const double& x) { return x < 0 ? 0 : 1; };
-inline double relu(const double& x) { return std::max(0.0, x); };
+inline void logistic(p_matrix in, p_matrix out) {*out =  1 / (1 + (-in->array()).exp()); }
+inline void relu(p_matrix in, p_matrix out) {*out = in->cwiseMax(0); }
+inline void softmax(p_matrix input, p_matrix output) {
+	*output = input->array().exp();
+	*output = output->array().colwise() / output->array().rowwise().sum();
+}
 
 // set of the derivate of activation function
-inline double identityD(const double& x) { return 1; };
-inline double logisticD(const double& x) { return logistic(x)*(1 - logistic(x)); };
-inline double binaryD(const double& x) { return 0; };
-inline double reluD(const double& x) { return x < 0.0 ? 0.0 : 1.0; };
+inline void logisticD(p_matrix in, p_matrix out) { logistic(in, out); *out = out->array() * (1 - out->array()); };
+inline void reluD(p_matrix in, p_matrix out) {}; //TODO
+
 
 // set of cost function
-inline void euclidian(double *cost, Eigen::MatrixXd *labels, Eigen::MatrixXd *predictions) { *cost = (*labels - *predictions).squaredNorm(); };
-inline void crossEntropy(double *cost, Eigen::MatrixXd *labels, Eigen::MatrixXd *predictions) { *cost = 1; }; // TODO
+inline double euclidian(p_matrix labels, p_matrix predictions) { return (labels->array() - predictions->array()).matrix().rowwise().squaredNorm().sum(); };
+inline double crossEntropy(p_matrix labels, p_matrix predictions) { return 1; }; // TODO
 
+//print training accuracy
 inline void print_state(unsigned epoch, double cost, double accuracy, double temps_ms)
 {
 	printf("Epoch #%d, Training error : %3.3f, Accuracy : %1.3f, Time : %1.0f ms \n", epoch, cost, accuracy, temps_ms);
@@ -36,7 +36,6 @@ inline void print_state(unsigned epoch, double cost, double accuracy, double tem
 }
 
 //set of gradient descent algo
-
 inline void SGD(vec_matrix weights, vec_matrix bias, vec_matrix local_gradients, vec_matrix y, p_matrix input,
 	vec_matrix weights_past_update, vec_matrix bias_past_update, int input_size, double learning_rate, double momentum) {
 	for (unsigned k = 0; k < weights.size(); k++) {

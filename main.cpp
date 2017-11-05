@@ -1,8 +1,5 @@
-#include <iostream>
 #include <vector>
 #include <string>
-#include <memory>
-#include <Eigen/Dense>
 
 #include "dnnJG.h"
 #include "read_mnist.h"
@@ -20,10 +17,10 @@ int main()
 
 	//set up MLP structure
 	std::vector<int> layers = {jg_mnist::INPUT_SIZE, 100, jg_mnist::NB_CLASSES};
-	
+	 
 	dnnJG mlp(layers, train_data, train_labels, test_data, test_labels);
 	mlp.print_structure();
-	mlp.train(100);
+	mlp.train(10);
 
 	system("pause");
 }

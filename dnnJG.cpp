@@ -6,7 +6,6 @@ dnnJG::dnnJG(std::vector<int> layers, p_matrix train_data, p_matrix train_labels
 	unsigned batchSize, int activation_function, int cost_function, double learning_rate, double momentum, int weight_update_function) :
 	batch_size_(batchSize), train_data_(train_data), train_labels_(train_labels), nb_layers_(unsigned(layers.size())),
 	learning_rate_(learning_rate), momentum_(momentum), input_size_(unsigned(train_data->rows())),
-	weight_update_function_(weight_update_function),
 	test_data_(test_data),
 	test_labels_(test_labels),
 	test_size_(unsigned(test_data->rows())),
@@ -29,22 +28,20 @@ dnnJG::dnnJG(std::vector<int> layers, p_matrix train_data, p_matrix train_labels
 		bias_past_update_.push_back(make_zero(1, layers[i + 1]));
 	}
 	switch (activation_function) {
-	case 1:  activation_function_ = &identity;	activation_function_derivative_ = &identityD; activation_function_name_ = "identity"; break;
-	case 2:  activation_function_ = &logistic;	activation_function_derivative_ = &logisticD; activation_function_name_ = "logistic"; break;
-	case 3:  activation_function_ = &binary;	activation_function_derivative_ = &binaryD;	  activation_function_name_ = "binary";   break;
-	case 4:  activation_function_ = &relu;		activation_function_derivative_ = &reluD;	  activation_function_name_ = "relu"; break;
-	default: activation_function_ = &logistic;	activation_function_derivative_ = &logisticD; activation_function_name_ = "logistic"; break;
+	case 0:  activation_function_ = logistic;	activation_function_derivative_ = logisticD; activation_function_name_ = "logistic"; break;
+	//case 1:  activation_function_ = &relu;		activation_function_derivative_ = &reluD;	  activation_function_name_ = "relu"; break;
+	default: activation_function_ = logistic;	activation_function_derivative_ = logisticD; activation_function_name_ = "logistic"; break;
 	}
 
 	switch (cost_function) {
-	case 1:  cost_function_ = &crossEntropy; cost_function_name_ = "crossEntropy";	break;
-	default: cost_function_ = &euclidian;	 cost_function_name_ = "euclidian";		break;
+	case 1:  cost_function_ = crossEntropy; cost_function_name_ = "crossEntropy";	break;
+	default: cost_function_ = euclidian;	 cost_function_name_ = "euclidian";		break;
 	}
 
 	switch (weight_update_function)
 	{
-	case 1:  GD_algo = momentum_GD; break;
-	default: GD_algo = SGD;			break;
+	case 1:  GD_algo = momentum_GD; weight_update_function_name = "momentum gradient descent"; break;
+	default: GD_algo = SGD;			weight_update_function_name = "stochastic gradient descent"; break;
 	}
 
 	printf("Neural network initialization complete \n");
@@ -65,6 +62,7 @@ void dnnJG::shape_for_new_size(int size)
 	}
 
 }
+
 void dnnJG::print_structure()
 {
 	std::cout <<"\nNeural network parameters :\n" <<
@@ -75,14 +73,18 @@ void dnnJG::print_structure()
 	std::cout <<"\nTraining set size : " << input_size_ << "\n"<<
 				"Testing set size : " << test_size_ << "\n"
 				"Activation function : " << activation_function_name_ << "\n"
-				"Cost function : " << cost_function_name_ << "\n";
+				"Cost function : " << cost_function_name_ << "\n"
+				"Weight update function : " << weight_update_function_name << "\n"
+				"Learning rate : " << learning_rate_ << "\n"
+				"Momentum : " << momentum_ << "\n";
+				
 	std::cout << std::endl;
 }
 
 void dnnJG::train(unsigned nbEpochs) {
 	std::cout << "Training ... \n";
-	//omp_set_num_threads(2);
-	//setNbThreads(2);
+	omp_set_num_threads(2);
+	setNbThreads(2);
 	for (unsigned i = 0; i < nbEpochs; ++i) {
 		shape_for_new_size(batch_size_);
 		//set up permatation matrix
@@ -94,7 +96,6 @@ void dnnJG::train(unsigned nbEpochs) {
 		//*train_labels_ = perm * (*train_labels_);
 		clock_t start = clock();
 		for (unsigned j = 0; j < input_size_ / batch_size_; ++j) {
-			cost_ = 0;
 			*input_  = train_data_  ->block(j*batch_size_, 0, batch_size_, train_data_->cols());
 			*labels_ = train_labels_->block(j*batch_size_, 0, batch_size_, train_labels_->cols());
 			forward(input_);
@@ -108,26 +109,32 @@ void dnnJG::train(unsigned nbEpochs) {
 	}
 }
 
-void dnnJG::add_bias(p_matrix bias, p_matrix output, unsigned inputSize) {
-	for (unsigned k = 0; k < inputSize; ++k)
-		output->block(k, 0, 1, output->cols()) += *bias;
+void dnnJG::add_bias(p_matrix bias, p_matrix output) {
+	*output = output->array().rowwise() + bias->array().row(0);
 }
 
 void dnnJG::forward(p_matrix input, bool inference) {
 	for (unsigned k = 0; k < weights_.size(); k++) {
 		*v_[k] = (k == 0 ? (*input) * (*weights_[k]) : (*y_[k - 1]) * (*weights_[k]));
-		add_bias(bias_[k], v_[k], batch_size_);
-		*y_[k] = v_[k]->unaryExpr(activation_function_);
-		if(!inference)
-			*y_d_[k] = (v_[k]->unaryExpr(activation_function_derivative_)).transpose();
+		add_bias(bias_[k], v_[k]);
+		if (k == weights_.size() - 1)
+			softmax(v_[k], y_[k]);
+		else
+			activation_function_(v_[k], y_[k]);
+		if (!inference)
+			activation_function_derivative_(v_[k], y_d_[k]);
 	}
 }
 
 void dnnJG::backward(p_matrix labels) {
-	cost_function_(&cost_, labels_.get(), y_.back().get());
+	cost_ = cost_function_(labels_, y_.back());
+	//*local_gradients_.back() = (*y_.back() - *labels).transpose();
+	//for (size_t k = local_gradients_.size() - 1; k > 0; --k)
+	//	*local_gradients_[k - 1] = ((*y_d_[k - 1]).array() * (*weights_[k] * (*local_gradients_[k])).array()).matrix();
+			
 	*local_gradients_.back() = (*y_.back() - *labels).transpose();
 	for (size_t k = local_gradients_.size() - 1; k > 0; --k)
-		*local_gradients_[k - 1] = ((*y_d_[k - 1]).array() * (*weights_[k] * (*local_gradients_[k])).array()).matrix();
+		*local_gradients_[k - 1] = ((*weights_[k] * (*local_gradients_[k])).array()).matrix();	
 }
 
 void dnnJG::inference() {
@@ -146,6 +153,9 @@ double dnnJG::check_accuracy(p_matrix predic, p_matrix labels) {
 	}
 	return (double)count / labels->rows();
 }
+
 void dnnJG::update_weights() {
-	GD_algo(weights_, bias_, local_gradients_, y_, input_, weights_past_update_, bias_past_update_, batch_size_, learning_rate_, momentum_);
+	GD_algo(weights_, bias_, local_gradients_,
+			y_, input_, weights_past_update_, 
+			bias_past_update_, batch_size_, learning_rate_, momentum_);
 }

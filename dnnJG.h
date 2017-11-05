@@ -16,14 +16,14 @@ class dnnJG
 public:
 	//consructor
 	dnnJG(std::vector<int> layers, p_matrix train_data,	p_matrix train_labels, p_matrix test_data, 	p_matrix test_labels,
-			unsigned batchSize = 50, int activation_function = -1, 	int cost_function = -1, double learning_rate = 0.1, 
+			unsigned batchSize = 50, int activation_function = -1, 	int cost_function = -1, double learning_rate = 0.05, 
 			double momentum = 0.01, int weight_update_function = 1);
 
 	virtual ~dnnJG();
 
 	void print_structure();
 
-	// wraps all stage of learning
+	// wraps all stages of learning
 	void train(unsigned nb_epochs);
 
 	// wraps inference for new data
@@ -31,7 +31,7 @@ public:
 
 	//different stage of learning
 	void forward (p_matrix input, bool inference = false);
-	void add_bias(p_matrix bias, p_matrix output, unsigned inputSize);
+	void add_bias(p_matrix bias, p_matrix output);
 	void backward(p_matrix labels);
 	void update_weights();
 
@@ -51,7 +51,6 @@ protected:
 
 	double cost_;
 	double accuracy_;
-	int weight_update_function_;
 
 	//parameters to be tuned
 	vec_matrix weights_, bias_;
@@ -68,12 +67,14 @@ protected:
 	// pointers to the functions used in backpropagation
 	std::string activation_function_name_;
 	std::string cost_function_name_;
+	std::string weight_update_function_name;
 
-	double(*activation_function_) (const double&);
-	double(*activation_function_derivative_) (const double&);
-	void(*cost_function_) (double*, Eigen::MatrixXd*, Eigen::MatrixXd*);
+	std::function<void(p_matrix in, p_matrix out)> activation_function_;
+	std::function<void(p_matrix in, p_matrix out)> activation_function_derivative_;
 
-	std::function<void(vec_matrix weights, vec_matrix bias, vec_matrix local_gradients, vec_matrix y, p_matrix input,
-					   vec_matrix weights_past_update, vec_matrix bias_past_update, int input_size, double learning_rate, double momentum)> GD_algo;
+	std::function<double(p_matrix in, p_matrix out)> cost_function_;
+
+	std::function<void(vec_matrix weights, vec_matrix bias, vec_matrix local_gradients,
+					   vec_matrix y, p_matrix input, vec_matrix weights_past_update,
+					   vec_matrix bias_past_update, int input_size, double learning_rate, double momentum)> GD_algo;
 };
-
