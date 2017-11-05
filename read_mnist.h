@@ -52,7 +52,7 @@ namespace jg_mnist {
 					for (int c = 0; c < n_cols; c++) {
 						unsigned char temp = 0;
 						file.read((char*)&temp, sizeof(temp));
-						(*data)(i, (n_rows * r) + c) = (double)temp;
+						(*data)(i, (n_rows * r) + c) = ((double)temp)/255; //normalization [0,1]
 					}
 				}
 			}
